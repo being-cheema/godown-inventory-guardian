@@ -4,11 +4,16 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { DatabaseProvider } from "@/contexts/DatabaseContext";
+import { DatabaseProvider, useDatabase } from "@/contexts/DatabaseContext";
 import Layout from "@/components/layout/Layout";
 import Dashboard from "@/pages/Dashboard";
 import Products from "@/pages/Products";
 import Alerts from "@/pages/Alerts";
+import Inventory from "@/pages/Inventory";
+import Suppliers from "@/pages/Suppliers";
+import Customers from "@/pages/Customers";
+import Orders from "@/pages/Orders";
+import Settings from "@/pages/Settings";
 import PlaceholderPage from "@/pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 import LoadingScreen from "@/components/LoadingScreen";
@@ -60,19 +65,16 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/products" element={<Products />} />
-        <Route path="/inventory" element={<PlaceholderPage />} />
-        <Route path="/suppliers" element={<PlaceholderPage />} />
-        <Route path="/customers" element={<PlaceholderPage />} />
-        <Route path="/orders" element={<PlaceholderPage />} />
+        <Route path="/inventory" element={<Inventory />} />
+        <Route path="/suppliers" element={<Suppliers />} />
+        <Route path="/customers" element={<Customers />} />
+        <Route path="/orders" element={<Orders />} />
         <Route path="/alerts" element={<Alerts />} />
-        <Route path="/settings" element={<PlaceholderPage />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
   );
 };
-
-// Temporary import to make this work (will be defined fully later)
-import { useDatabase } from "@/contexts/DatabaseContext";
 
 export default App;

@@ -12,22 +12,38 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { getProducts } from '@/lib/database';
 import { Product } from '@/types';
+import ProductModal from '@/components/products/ProductModal';
+import { useToast } from '@/hooks/use-toast';
 
 const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | undefined>(undefined);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const itemsPerPage = 10;
+  const { toast } = useToast();
   
-  useEffect(() => {
+  const fetchProducts = () => {
     try {
       const fetchedProducts = getProducts();
       setProducts(fetchedProducts);
     } catch (error) {
       console.error("Error fetching products:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load products",
+        variant: "destructive"
+      });
     }
+  };
+  
+  useEffect(() => {
+    fetchProducts();
   }, []);
   
   // Filter products based on search term
@@ -43,6 +59,33 @@ const Products: React.FC = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredProducts.slice(indexOfFirstItem, indexOfLastItem);
   
+  const handleAddProduct = () => {
+    setSelectedProduct(undefined);
+    setIsModalOpen(true);
+  };
+  
+  const handleEditProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+  };
+  
+  const handleDeleteClick = (product: Product) => {
+    setSelectedProduct(product);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  const handleDeleteConfirm = () => {
+    if (selectedProduct?.product_id) {
+      // In a real app, this would delete from the database
+      setProducts(products.filter(p => p.product_id !== selectedProduct.product_id));
+      toast({
+        title: "Success",
+        description: "Product deleted successfully"
+      });
+    }
+    setIsDeleteDialogOpen(false);
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
@@ -50,7 +93,7 @@ const Products: React.FC = () => {
           <Package className="h-7 w-7 mr-2" />
           Products
         </h1>
-        <Button>
+        <Button onClick={handleAddProduct}>
           <Plus className="h-4 w-4 mr-2" />
           Add Product
         </Button>
@@ -105,10 +148,10 @@ const Products: React.FC = () => {
                     <td className="p-3">{product.supplier_name || 'N/A'}</td>
                     <td className="p-3">
                       <div className="flex space-x-2">
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" onClick={() => handleEditProduct(product)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(product)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -157,6 +200,34 @@ const Products: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      
+      {/* Product Modal */}
+      <ProductModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        product={selectedProduct}
+        onSuccess={fetchProducts}
+      />
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Product</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{selectedProduct?.product_name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
