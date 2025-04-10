@@ -14,25 +14,28 @@ import Suppliers from "@/pages/Suppliers";
 import Customers from "@/pages/Customers";
 import Orders from "@/pages/Orders";
 import Settings from "@/pages/Settings";
-import PlaceholderPage from "@/pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 import LoadingScreen from "@/components/LoadingScreen";
+import { useState } from "react";
 
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <DatabaseProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
-      </TooltipProvider>
-    </DatabaseProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  // Move QueryClient inside the component
+  const [queryClient] = useState(() => new QueryClient());
+  
+  return (
+    <QueryClientProvider client={queryClient}>
+      <DatabaseProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </TooltipProvider>
+      </DatabaseProvider>
+    </QueryClientProvider>
+  );
+};
 
 const AppContent = () => {
   const { isLoading, isError } = useDatabase();
