@@ -22,19 +22,35 @@ import { Badge } from '@/components/ui/badge';
 import { getRecentOrders } from '@/lib/database';
 import { runInventoryTests } from '@/lib/queryUtils';
 import { Order } from '@/types';
+import OrderModal from '@/components/orders/OrderModal';
+import OrderDetailModal from '@/components/orders/OrderDetailModal';
+import { useToast } from '@/hooks/use-toast';
 
 const Orders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<number | undefined>(undefined);
+  const { toast } = useToast();
   
-  useEffect(() => {
+  const fetchOrders = () => {
     try {
       const fetchedOrders = getRecentOrders(50);
       setOrders(fetchedOrders);
     } catch (error) {
       console.error("Error fetching orders:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load orders",
+        variant: "destructive"
+      });
     }
+  };
+  
+  useEffect(() => {
+    fetchOrders();
   }, []);
   
   // Filter orders based on search term and status
@@ -66,6 +82,19 @@ const Orders: React.FC = () => {
     runInventoryTests();
   };
   
+  const handleViewOrder = (orderId: number) => {
+    setSelectedOrderId(orderId);
+    setIsDetailModalOpen(true);
+  };
+  
+  const handleCreateOrder = () => {
+    setIsCreateModalOpen(true);
+  };
+  
+  const handleOrderStatusChange = () => {
+    fetchOrders();
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
@@ -78,7 +107,7 @@ const Orders: React.FC = () => {
             <Play className="h-4 w-4 mr-2" />
             Run Inventory Tests
           </Button>
-          <Button>
+          <Button onClick={handleCreateOrder}>
             Create Order
           </Button>
         </div>
@@ -218,7 +247,13 @@ const Orders: React.FC = () => {
                       </Badge>
                     </td>
                     <td className="p-3">
-                      <Button variant="ghost" size="sm">View</Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleViewOrder(order.order_id as number)}
+                      >
+                        View
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -235,6 +270,21 @@ const Orders: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Create Order Modal */}
+      <OrderModal 
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={fetchOrders}
+      />
+      
+      {/* Order Detail Modal */}
+      <OrderDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        orderId={selectedOrderId}
+        onStatusChange={handleOrderStatusChange}
+      />
     </div>
   );
 };

@@ -1,15 +1,17 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, Maximize2, Minimize2, Play, X } from 'lucide-react';
+import { Terminal, Maximize2, Minimize2, Play, X, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { runInventoryTests } from '@/lib/queryUtils';
+import { useToast } from '@/hooks/use-toast';
 
 const Console: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const consoleRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
   
   // Override console.log to capture logs
   useEffect(() => {
@@ -93,10 +95,18 @@ const Console: React.FC = () => {
       setIsOpen(true);
       setIsMinimized(false);
     }
+    toast({
+      title: "Tests Running",
+      description: "Inventory tests have been initiated"
+    });
   };
   
   const handleClear = () => {
     setLogs([]);
+    toast({
+      title: "Console Cleared",
+      description: "All console logs have been cleared"
+    });
   };
   
   if (!isOpen && !isMinimized) {
@@ -116,7 +126,7 @@ const Console: React.FC = () => {
     return (
       <div className="fixed bottom-4 right-4 z-50">
         <div className="flex space-x-2">
-          <Button variant="outline" className="rounded-full" onClick={handleRunTests}>
+          <Button variant="outline" className="rounded-full shadow-lg flex items-center justify-center" onClick={handleRunTests}>
             <Play className="h-4 w-4" />
           </Button>
           <Button
@@ -136,23 +146,23 @@ const Console: React.FC = () => {
   
   return (
     <div className="fixed bottom-0 right-0 w-full md:w-2/3 lg:w-1/2 h-1/2 z-50 p-4">
-      <Card className="h-full flex flex-col">
+      <Card className="h-full flex flex-col animate-fade-in shadow-xl">
         <CardHeader className="p-3 border-b flex-shrink-0 flex flex-row items-center justify-between">
           <CardTitle className="text-sm flex items-center">
             <Terminal className="h-4 w-4 mr-2" />
             Inventory System Console
           </CardTitle>
           <div className="flex space-x-1">
-            <Button variant="ghost" size="icon" onClick={handleRunTests}>
+            <Button variant="ghost" size="icon" onClick={handleRunTests} title="Run Tests">
               <Play className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleClear}>
-              <X className="h-4 w-4" />
+            <Button variant="ghost" size="icon" onClick={handleClear} title="Clear Console">
+              <RotateCcw className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => setIsMinimized(true)}>
+            <Button variant="ghost" size="icon" onClick={() => setIsMinimized(true)} title="Minimize">
               <Minimize2 className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
+            <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} title="Close">
               <X className="h-4 w-4" />
             </Button>
           </div>

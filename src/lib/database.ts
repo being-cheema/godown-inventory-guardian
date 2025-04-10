@@ -1,4 +1,3 @@
-
 import initSqlJs, { Database } from 'sql.js';
 
 // Database singleton instance
@@ -441,4 +440,110 @@ export const loadDatabase = (data: Uint8Array): void => {
   }).then(SQL => {
     db = new SQL.Database(data);
   });
+};
+
+// Get all customers
+export const getCustomers = (): any[] => {
+  const result = executeQuery(`SELECT * FROM customers`);
+  
+  if (result.length === 0) return [];
+  return result[0].values.map((row: any[]) => ({
+    customer_id: row[0],
+    first_name: row[1],
+    last_name: row[2],
+    name: row[3],
+    phone_number: row[4],
+    email: row[5],
+    shipping_address: row[6],
+    date_of_birth: row[7]
+  }));
+};
+
+// Add a new order
+export const addOrder = (order: any): number => {
+  const { customer_id, total_amount, shipping_address, order_status } = order;
+  
+  const result = executeQuery(`
+    INSERT INTO orders (customer_id, total_amount, shipping_address, order_status)
+    VALUES (?, ?, ?, ?)
+  `, [customer_id, total_amount, shipping_address, order_status || 'Pending']);
+  
+  // Get the last inserted ID
+  const idResult = executeQuery(`SELECT last_insert_rowid()`);
+  if (idResult.length === 0 || !idResult[0].values || !idResult[0].values[0]) return 0;
+  return idResult[0].values[0][0];
+};
+
+// Add order items
+export const addOrderItems = (items: any[]): number => {
+  let count = 0;
+  
+  items.forEach(item => {
+    const { order_id, product_id, quantity_ordered, item_price } = item;
+    const total_price = quantity_ordered * item_price;
+    
+    executeQuery(`
+      INSERT INTO order_items (order_id, product_id, quantity_ordered, item_price, total_price)
+      VALUES (?, ?, ?, ?, ?)
+    `, [order_id, product_id, quantity_ordered, item_price, total_price]);
+    
+    count++;
+  });
+  
+  return count;
+};
+
+// Update order status
+export const updateOrderStatus = (order_id: number, status: string): number => {
+  const result = executeQuery(`
+    UPDATE orders
+    SET order_status = ?
+    WHERE order_id = ?
+  `, [status, order_id]);
+  
+  return db?.getRowsModified() || 0;
+};
+
+// Get order details with items
+export const getOrderDetails = (order_id: number): any => {
+  const orderResult = executeQuery(`
+    SELECT o.*, c.name as customer_name
+    FROM orders o
+    JOIN customers c ON o.customer_id = c.customer_id
+    WHERE o.order_id = ?
+  `, [order_id]);
+  
+  if (orderResult.length === 0 || !orderResult[0].values || orderResult[0].values.length === 0) return null;
+  
+  const order = {
+    order_id: orderResult[0].values[0][0],
+    customer_id: orderResult[0].values[0][1],
+    order_date: orderResult[0].values[0][2],
+    total_amount: orderResult[0].values[0][3],
+    shipping_address: orderResult[0].values[0][4],
+    order_status: orderResult[0].values[0][5],
+    customer_name: orderResult[0].values[0][6]
+  };
+  
+  const itemsResult = executeQuery(`
+    SELECT oi.*, p.product_name
+    FROM order_items oi
+    JOIN products p ON oi.product_id = p.product_id
+    WHERE oi.order_id = ?
+  `, [order_id]);
+  
+  let items = [];
+  if (itemsResult.length > 0 && itemsResult[0].values) {
+    items = itemsResult[0].values.map((row: any[]) => ({
+      order_item_id: row[0],
+      order_id: row[1],
+      product_id: row[2],
+      quantity_ordered: row[3],
+      item_price: row[4],
+      total_price: row[5],
+      product_name: row[6]
+    }));
+  }
+  
+  return { ...order, items };
 };

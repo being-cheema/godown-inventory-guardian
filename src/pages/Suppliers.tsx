@@ -19,15 +19,20 @@ import { Badge } from '@/components/ui/badge';
 import { getSuppliers } from '@/lib/database';
 import { Supplier } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import SupplierModal from '@/components/suppliers/SupplierModal';
+import DeleteSupplierDialog from '@/components/suppliers/DeleteSupplierDialog';
 
 const Suppliers: React.FC = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | undefined>(undefined);
   const itemsPerPage = 10;
   const { toast } = useToast();
   
-  useEffect(() => {
+  const fetchSuppliers = () => {
     try {
       const fetchedSuppliers = getSuppliers();
       setSuppliers(fetchedSuppliers);
@@ -39,6 +44,10 @@ const Suppliers: React.FC = () => {
         variant: "destructive"
       });
     }
+  };
+  
+  useEffect(() => {
+    fetchSuppliers();
   }, []);
   
   // Filter suppliers based on search term
@@ -55,6 +64,33 @@ const Suppliers: React.FC = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredSuppliers.slice(indexOfFirstItem, indexOfLastItem);
   
+  const handleAddSupplier = () => {
+    setSelectedSupplier(undefined);
+    setIsModalOpen(true);
+  };
+  
+  const handleEditSupplier = (supplier: Supplier) => {
+    setSelectedSupplier(supplier);
+    setIsModalOpen(true);
+  };
+  
+  const handleDeleteClick = (supplier: Supplier) => {
+    setSelectedSupplier(supplier);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  const handleDeleteConfirm = () => {
+    if (selectedSupplier) {
+      // In a real app, this would delete from the database
+      setSuppliers(suppliers.filter(s => s.supplier_id !== selectedSupplier.supplier_id));
+      toast({
+        title: "Success",
+        description: "Supplier deleted successfully"
+      });
+    }
+    setIsDeleteDialogOpen(false);
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
@@ -62,7 +98,7 @@ const Suppliers: React.FC = () => {
           <Truck className="h-7 w-7 mr-2" />
           Suppliers
         </h1>
-        <Button>
+        <Button onClick={handleAddSupplier}>
           <Plus className="h-4 w-4 mr-2" />
           Add Supplier
         </Button>
@@ -134,10 +170,10 @@ const Suppliers: React.FC = () => {
                     </td>
                     <td className="p-3">
                       <div className="flex space-x-2">
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" onClick={() => handleEditSupplier(supplier)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(supplier)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -186,6 +222,22 @@ const Suppliers: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      
+      {/* Supplier Modal */}
+      <SupplierModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        supplier={selectedSupplier}
+        onSuccess={fetchSuppliers}
+      />
+      
+      {/* Delete Confirmation Dialog */}
+      <DeleteSupplierDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        supplierName={selectedSupplier?.supplier_name || ''}
+      />
     </div>
   );
 };
