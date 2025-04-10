@@ -16,6 +16,7 @@ import Orders from "@/pages/Orders";
 import Settings from "@/pages/Settings";
 import NotFound from "./pages/NotFound";
 import LoadingScreen from "@/components/LoadingScreen";
+import Console from "@/components/Console";
 import { useState } from "react";
 
 const App = () => {
@@ -31,6 +32,7 @@ const App = () => {
           <BrowserRouter>
             <AppContent />
           </BrowserRouter>
+          <Console />
         </TooltipProvider>
       </DatabaseProvider>
     </QueryClientProvider>

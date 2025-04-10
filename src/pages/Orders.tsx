@@ -2,101 +2,68 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ShoppingCart, 
-  Plus, 
-  Search, 
-  Filter,
-  Eye,
-  ChevronLeft,
-  ChevronRight,
-  Calendar
+  Calendar, 
+  Check, 
+  TrendingUp,
+  Search,
+  Play
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
-import { executeQuery } from '@/lib/database';
+import { getRecentOrders } from '@/lib/database';
+import { runInventoryTests } from '@/lib/queryUtils';
 import { Order } from '@/types';
-import { useToast } from '@/hooks/use-toast';
 
 const Orders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const itemsPerPage = 10;
-  const { toast } = useToast();
+  const [statusFilter, setStatusFilter] = useState('all');
   
   useEffect(() => {
     try {
-      // Get orders from database with customer names
-      const result = executeQuery(`
-        SELECT o.*, c.name as customer_name
-        FROM orders o
-        JOIN customers c ON o.customer_id = c.customer_id
-        ORDER BY o.order_date DESC
-      `);
-      
-      if (result.length === 0) {
-        setOrders([]);
-        return;
-      }
-      
-      const fetchedOrders = result[0].values.map((row: any[]) => ({
-        order_id: row[0],
-        customer_id: row[1],
-        order_date: row[2],
-        total_amount: row[3],
-        shipping_address: row[4],
-        order_status: row[5],
-        customer_name: row[6]
-      }));
-      
+      const fetchedOrders = getRecentOrders(50);
       setOrders(fetchedOrders);
     } catch (error) {
       console.error("Error fetching orders:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load orders",
-        variant: "destructive"
-      });
     }
   }, []);
   
   // Filter orders based on search term and status
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
-      (order.customer_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (`#${order.order_id}`.toLowerCase()).includes(searchTerm.toLowerCase());
+      order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.order_id?.toString().includes(searchTerm);
     
-    const matchesStatus = statusFilter ? order.order_status === statusFilter : true;
+    const matchesStatus = 
+      statusFilter === 'all' || 
+      (order.order_status?.toLowerCase() === statusFilter.toLowerCase());
     
     return matchesSearch && matchesStatus;
   });
   
-  // Pagination
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredOrders.slice(indexOfFirstItem, indexOfLastItem);
-
-  // Get list of unique statuses for filtering
-  const statuses = [...new Set(orders.map(order => order.order_status))].filter(Boolean) as string[];
-  
-  // Get badge color based on status
-  const getStatusBadgeColor = (status: string | undefined) => {
-    if (!status) return "bg-gray-100 text-gray-800";
-    
-    switch (status) {
-      case 'Delivered':
-        return "bg-green-100 text-green-800";
-      case 'Shipped':
-        return "bg-blue-100 text-blue-800";
-      case 'Processing':
-        return "bg-purple-100 text-purple-800";
-      case 'Pending':
+  const getStatusBadgeColor = (status?: string) => {
+    switch (status?.toLowerCase()) {
+      case 'delivered':
+        return 'bg-green-100 text-green-800';
+      case 'shipped':
+        return 'bg-blue-100 text-blue-800';
+      case 'pending':
       default:
-        return "bg-amber-100 text-amber-800";
+        return 'bg-amber-100 text-amber-800';
     }
+  };
+  
+  const handleRunTests = () => {
+    runInventoryTests();
   };
   
   return (
@@ -106,58 +73,124 @@ const Orders: React.FC = () => {
           <ShoppingCart className="h-7 w-7 mr-2" />
           Orders
         </h1>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          New Order
-        </Button>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={handleRunTests}>
+            <Play className="h-4 w-4 mr-2" />
+            Run Inventory Tests
+          </Button>
+          <Button>
+            Create Order
+          </Button>
+        </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="md:col-span-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Total Orders</p>
+                <p className="text-2xl font-bold">{orders.length}</p>
+              </div>
+              <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
+                <ShoppingCart className="h-6 w-6 text-primary" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Pending</p>
+                <p className="text-2xl font-bold">
+                  {orders.filter(order => order.order_status === 'Pending').length}
+                </p>
+              </div>
+              <div className="h-12 w-12 bg-amber-100 rounded-full flex items-center justify-center">
+                <Calendar className="h-6 w-6 text-amber-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Shipped</p>
+                <p className="text-2xl font-bold">
+                  {orders.filter(order => order.order_status === 'Shipped').length}
+                </p>
+              </div>
+              <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <TrendingUp className="h-6 w-6 text-blue-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Delivered</p>
+                <p className="text-2xl font-bold">
+                  {orders.filter(order => order.order_status === 'Delivered').length}
+                </p>
+              </div>
+              <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                <Check className="h-6 w-6 text-green-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="col-span-1">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-md">Filter Orders</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Status</label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="shipped">Shipped</SelectItem>
+                      <SelectItem value="delivered">Delivered</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        <div className="col-span-1 md:col-span-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
-              placeholder="Search by customer or order ID..." 
+              placeholder="Search by order ID or customer name..." 
               className="pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
-        
-        <div>
-          <div className="flex space-x-2">
-            <Button 
-              variant={statusFilter === '' ? "default" : "outline"} 
-              size="sm" 
-              className="flex-1"
-              onClick={() => setStatusFilter('')}
-            >
-              All
-            </Button>
-            {statuses.map(status => (
-              <Button 
-                key={status} 
-                variant={statusFilter === status ? "default" : "outline"} 
-                size="sm"
-                className="flex-1"
-                onClick={() => setStatusFilter(status)}
-              >
-                {status}
-              </Button>
-            ))}
-          </div>
-        </div>
       </div>
       
       <Card>
-        <CardHeader className="p-4 border-b">
-          <CardTitle className="text-lg flex items-center justify-between">
-            <span>Order List</span>
-            <span className="text-sm font-normal text-muted-foreground">
-              Total: {orders.length} orders
-            </span>
-          </CardTitle>
+        <CardHeader className="pb-3 border-b">
+          <CardTitle>Order List</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -173,36 +206,24 @@ const Orders: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {currentItems.map((order) => (
+                {filteredOrders.map((order) => (
                   <tr key={order.order_id} className="border-b hover:bg-muted/50">
-                    <td className="p-3 font-medium">
-                      #{order.order_id}
-                    </td>
-                    <td className="p-3">{order.customer_name || 'N/A'}</td>
+                    <td className="p-3 font-medium">#{order.order_id}</td>
+                    <td className="p-3">{order.customer_name}</td>
+                    <td className="p-3">{new Date(order.order_date || '').toLocaleDateString()}</td>
+                    <td className="p-3">${order.total_amount?.toFixed(2)}</td>
                     <td className="p-3">
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                        {new Date(order.order_date || '').toLocaleDateString()}
-                      </div>
-                    </td>
-                    <td className="p-3">${order.total_amount?.toFixed(2) || '0.00'}</td>
-                    <td className="p-3">
-                      <Badge 
-                        className={getStatusBadgeColor(order.order_status)}
-                      >
-                        {order.order_status || 'Pending'}
+                      <Badge className={getStatusBadgeColor(order.order_status)}>
+                        {order.order_status}
                       </Badge>
                     </td>
                     <td className="p-3">
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4 mr-2" />
-                        View
-                      </Button>
+                      <Button variant="ghost" size="sm">View</Button>
                     </td>
                   </tr>
                 ))}
                 
-                {currentItems.length === 0 && (
+                {filteredOrders.length === 0 && (
                   <tr>
                     <td colSpan={6} className="p-4 text-center text-muted-foreground">
                       No orders found
@@ -212,35 +233,6 @@ const Orders: React.FC = () => {
               </tbody>
             </table>
           </div>
-          
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between p-4 border-t">
-              <div className="text-sm text-muted-foreground">
-                Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredOrders.length)} of {filteredOrders.length} orders
-              </div>
-              
-              <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
