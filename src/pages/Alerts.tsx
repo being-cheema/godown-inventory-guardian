@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getLowStockProducts, getExpiringProducts } from '@/lib/database';
-import { Product, AlertItem } from '@/types';
+import { Product, AlertItem, InventoryRecord } from '@/types';
 
 const Alerts: React.FC = () => {
-  const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
-  const [expiringProducts, setExpiringProducts] = useState<Product[]>([]);
+  const [lowStockProducts, setLowStockProducts] = useState<(Product & { quantity_in_stock?: number })[]>([]);
+  const [expiringProducts, setExpiringProducts] = useState<(Product & { expiry_date?: string, warehouse_name?: string })[]>([]);
   
   useEffect(() => {
     try {
