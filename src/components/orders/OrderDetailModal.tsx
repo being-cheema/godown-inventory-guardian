@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PackageCheck, Truck, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getOrderDetails, updateOrderStatus } from '@/lib/database';
 
 interface OrderDetailModalProps {
   isOpen: boolean;
@@ -27,54 +28,88 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   useEffect(() => {
     if (isOpen && orderId) {
       setIsLoading(true);
+      console.log(`Fetching details for order #${orderId}`);
       
-      // In a real application, this would fetch from the database
-      // For demo purposes, we'll create a mock order
-      const mockOrder = {
-        order_id: orderId,
-        customer_name: "Test Customer",
-        order_date: new Date().toISOString(),
-        total_amount: 132.45,
-        shipping_address: "123 Test St, Test City, TC 12345",
-        order_status: "Pending"
-      };
-      
-      const mockOrderItems = [
-        { product_name: "Rice", quantity: 2, price: 12.99, total: 25.98 },
-        { product_name: "Chicken", quantity: 3, price: 8.99, total: 26.97 },
-        { product_name: "Milk", quantity: 1, price: 3.49, total: 3.49 }
-      ];
-      
-      setOrder(mockOrder);
-      setOrderItems(mockOrderItems);
-      setIsLoading(false);
+      try {
+        // Get order details from database
+        const orderDetails = getOrderDetails(orderId);
+        
+        if (orderDetails) {
+          setOrder(orderDetails);
+          setOrderItems(orderDetails.items || []);
+          console.log("Order details retrieved:", orderDetails);
+        } else {
+          // Fallback to mock data if order not found
+          console.log("Order not found in database, using mock data");
+          const mockOrder = {
+            order_id: orderId,
+            customer_name: "Test Customer",
+            order_date: new Date().toISOString(),
+            total_amount: 132.45,
+            shipping_address: "123 Test St, Test City, TC 12345",
+            order_status: "Pending"
+          };
+          
+          const mockOrderItems = [
+            { product_name: "Rice", quantity: 2, price: 12.99, total: 25.98 },
+            { product_name: "Chicken", quantity: 3, price: 8.99, total: 26.97 },
+            { product_name: "Milk", quantity: 1, price: 3.49, total: 3.49 }
+          ];
+          
+          setOrder(mockOrder);
+          setOrderItems(mockOrderItems);
+        }
+      } catch (error) {
+        console.error("Error fetching order details:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load order details",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
   }, [isOpen, orderId]);
 
   const handleUpdateStatus = (newStatus: string) => {
-    if (!order) return;
+    if (!order || !orderId) return;
     
-    // In a real application, this would update the database
-    setOrder({
-      ...order,
-      order_status: newStatus
-    });
-    
-    toast({
-      title: "Status Updated",
-      description: `Order has been ${newStatus.toLowerCase()}`,
-      variant: "default"
-    });
-    
-    if (onStatusChange) {
-      onStatusChange();
+    try {
+      console.log(`Updating order #${orderId} status to ${newStatus}`);
+      
+      // Update order status in database
+      updateOrderStatus(orderId, newStatus);
+      
+      // Update local state
+      setOrder({
+        ...order,
+        order_status: newStatus
+      });
+      
+      toast({
+        title: "Status Updated",
+        description: `Order has been ${newStatus.toLowerCase()}`,
+        variant: "default"
+      });
+      
+      if (onStatusChange) {
+        onStatusChange();
+      }
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update order status",
+        variant: "destructive"
+      });
     }
   };
   
   const getStatusActions = () => {
     if (!order) return null;
     
-    switch (order.order_status.toLowerCase()) {
+    switch (order.order_status?.toLowerCase()) {
       case 'pending':
         return (
           <Button onClick={() => handleUpdateStatus('Shipped')} className="gap-2">
@@ -160,9 +195,9 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       {orderItems.map((item, index) => (
                         <tr key={index} className="border-t">
                           <td className="p-2">{item.product_name}</td>
-                          <td className="p-2 text-center">{item.quantity}</td>
-                          <td className="p-2 text-right">${item.price.toFixed(2)}</td>
-                          <td className="p-2 text-right">${item.total.toFixed(2)}</td>
+                          <td className="p-2 text-center">{item.quantity_ordered || item.quantity}</td>
+                          <td className="p-2 text-right">${(item.item_price || item.price).toFixed(2)}</td>
+                          <td className="p-2 text-right">${(item.total_price || item.total).toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>

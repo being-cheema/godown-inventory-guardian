@@ -33,12 +33,15 @@ const Orders: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<number | undefined>(undefined);
+  const [isVerboseOutput, setIsVerboseOutput] = useState(true);
   const { toast } = useToast();
   
   const fetchOrders = () => {
     try {
+      console.log("Fetching recent orders from database...");
       const fetchedOrders = getRecentOrders(50);
       setOrders(fetchedOrders);
+      console.log(`Retrieved ${fetchedOrders.length} orders`);
     } catch (error) {
       console.error("Error fetching orders:", error);
       toast({
@@ -79,19 +82,29 @@ const Orders: React.FC = () => {
   };
   
   const handleRunTests = () => {
-    runInventoryTests();
+    console.clear(); // Clear console before running tests
+    console.log("=== Starting Inventory System Tests ===");
+    runInventoryTests(isVerboseOutput);
+    
+    toast({
+      title: "Tests Running",
+      description: "Check the console for detailed results",
+    });
   };
   
   const handleViewOrder = (orderId: number) => {
+    console.log(`Viewing order details for order #${orderId}`);
     setSelectedOrderId(orderId);
     setIsDetailModalOpen(true);
   };
   
   const handleCreateOrder = () => {
+    console.log("Opening create order modal");
     setIsCreateModalOpen(true);
   };
   
   const handleOrderStatusChange = () => {
+    console.log("Order status changed, refreshing orders list");
     fetchOrders();
   };
   

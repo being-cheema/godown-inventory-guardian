@@ -1,15 +1,18 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, Maximize2, Minimize2, Play, X, RotateCcw } from 'lucide-react';
+import { Terminal, Maximize2, Minimize2, Play, X, RotateCcw, Save, FileCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { runInventoryTests } from '@/lib/queryUtils';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const Console: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
+  const [isVerbose, setIsVerbose] = useState(true);
+  const [isAutoScroll, setIsAutoScroll] = useState(true);
   const consoleRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
@@ -37,7 +40,10 @@ const Console: React.FC = () => {
         return String(arg);
       }).join(' ');
       
-      setLogs(prevLogs => [...prevLogs, `${type === 'log' ? '' : `[${type}] `}${indent}${log}`]);
+      const timestamp = new Date().toISOString().substring(11, 23);
+      const logWithTimestamp = `[${timestamp}] ${type === 'log' ? '' : `[${type}] `}${indent}${log}`;
+      
+      setLogs(prevLogs => [...prevLogs, logWithTimestamp]);
     };
     
     console.log = (...args) => {
@@ -83,18 +89,26 @@ const Console: React.FC = () => {
   
   // Scroll to bottom when logs update
   useEffect(() => {
-    if (consoleRef.current) {
+    if (consoleRef.current && isAutoScroll) {
       consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
     }
-  }, [logs]);
+  }, [logs, isAutoScroll]);
   
   const handleRunTests = () => {
-    setLogs([]);
-    runInventoryTests();
+    setLogs(prevLogs => [
+      ...prevLogs, 
+      `[${new Date().toISOString().substring(11, 23)}] === Starting Inventory Tests ===`
+    ]);
+    
+    console.group("Inventory System Tests");
+    runInventoryTests(isVerbose);
+    console.groupEnd();
+    
     if (!isOpen) {
       setIsOpen(true);
       setIsMinimized(false);
     }
+    
     toast({
       title: "Tests Running",
       description: "Inventory tests have been initiated"
@@ -107,6 +121,32 @@ const Console: React.FC = () => {
       title: "Console Cleared",
       description: "All console logs have been cleared"
     });
+  };
+  
+  const handleSave = () => {
+    try {
+      const blob = new Blob([logs.join('\n')], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `inventory-logs-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Logs Saved",
+        description: "Console logs have been saved to a file"
+      });
+    } catch (error) {
+      console.error("Error saving logs:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save console logs",
+        variant: "destructive"
+      });
+    }
   };
   
   if (!isOpen && !isMinimized) {
@@ -153,8 +193,27 @@ const Console: React.FC = () => {
             Inventory System Console
           </CardTitle>
           <div className="flex space-x-1">
+            <div className="flex items-center mr-2 space-x-2">
+              <Checkbox 
+                id="verbose" 
+                checked={isVerbose}
+                onCheckedChange={(checked) => setIsVerbose(!!checked)} 
+              />
+              <label htmlFor="verbose" className="text-xs cursor-pointer">Verbose</label>
+              
+              <Checkbox 
+                id="autoscroll" 
+                checked={isAutoScroll}
+                onCheckedChange={(checked) => setIsAutoScroll(!!checked)} 
+                className="ml-2"
+              />
+              <label htmlFor="autoscroll" className="text-xs cursor-pointer">Auto-scroll</label>
+            </div>
             <Button variant="ghost" size="icon" onClick={handleRunTests} title="Run Tests">
               <Play className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleSave} title="Save Logs">
+              <Save className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" onClick={handleClear} title="Clear Console">
               <RotateCcw className="h-4 w-4" />
@@ -178,23 +237,46 @@ const Console: React.FC = () => {
               </div>
             ) : (
               logs.map((log, index) => {
+                // Highlight different message types
+                let className = "mb-1 whitespace-pre-wrap break-words";
+                
+                if (log.includes('[error]')) {
+                  className += " text-red-400";
+                } else if (log.includes('[warn]')) {
+                  className += " text-yellow-400";
+                } else if (log.includes('[info]')) {
+                  className += " text-blue-400";
+                } else if (log.includes('===')) {
+                  className += " text-purple-400 font-bold";
+                }
+                
                 // Handle JSON strings to display them properly
-                if (log.startsWith('{') || log.startsWith('[')) {
+                if (log.includes('{') || log.includes('[')) {
                   try {
-                    const jsonObj = JSON.parse(log);
-                    return (
-                      <pre key={index} className="mb-1 whitespace-pre-wrap break-words">
-                        {JSON.stringify(jsonObj, null, 2)}
-                      </pre>
-                    );
+                    // Extract JSON part of the log (if any)
+                    const jsonMatch = log.match(/(\{.*\}|\[.*\])/);
+                    if (jsonMatch) {
+                      const jsonPart = jsonMatch[0];
+                      const jsonObj = JSON.parse(jsonPart);
+                      const formattedJson = JSON.stringify(jsonObj, null, 2);
+                      const beforeJson = log.substring(0, log.indexOf(jsonPart));
+                      const afterJson = log.substring(log.indexOf(jsonPart) + jsonPart.length);
+                      
+                      return (
+                        <div key={index} className={className}>
+                          {beforeJson}
+                          <pre>{formattedJson}</pre>
+                          {afterJson}
+                        </div>
+                      );
+                    }
                   } catch {
                     // If it's not valid JSON, display as normal
-                    return <div key={index} className="mb-1 whitespace-pre-wrap break-words">{log}</div>;
                   }
                 }
                 
                 // Display regular logs
-                return <div key={index} className="mb-1 whitespace-pre-wrap break-words">{log}</div>;
+                return <div key={index} className={className}>{log}</div>;
               })
             )}
           </div>

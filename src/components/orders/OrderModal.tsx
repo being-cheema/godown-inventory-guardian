@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getCustomers, getProducts } from '@/lib/database';
+import { getCustomers, getProducts, addOrder, addOrderItems, updateInventoryRecord, getInventoryByWarehouse } from '@/lib/database';
 import { useToast } from '@/hooks/use-toast';
 
 interface OrderModalProps {
@@ -20,6 +20,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
   const [products, setProducts] = useState<any[]>([]);
   const [orderItems, setOrderItems] = useState<any[]>([{ product_id: '', quantity: 1 }]);
   const [shippingAddress, setShippingAddress] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -100,15 +101,85 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
       return;
     }
 
-    // In a real application, this would save to the database
-    // For demo purposes, we'll just show a success message
-    toast({
-      title: "Success",
-      description: "Order created successfully"
-    });
+    setIsSubmitting(true);
     
-    onSuccess();
-    onClose();
+    try {
+      console.log("Creating new order in database...");
+      
+      // Calculate total amount
+      const totalAmount = calculateTotal();
+      
+      // Create order record
+      const orderId = addOrder({
+        customer_id: parseInt(selectedCustomer),
+        total_amount: totalAmount,
+        shipping_address: shippingAddress,
+        order_status: 'Pending'
+      });
+      
+      console.log(`Order created with ID: ${orderId}`);
+      
+      // Prepare order items
+      const orderItemsToAdd = orderItems.map(item => {
+        const product = products.find(p => p.product_id.toString() === item.product_id.toString());
+        return {
+          order_id: orderId,
+          product_id: parseInt(item.product_id),
+          quantity_ordered: item.quantity,
+          item_price: product ? product.price : 0,
+          total_price: product ? product.price * item.quantity : 0
+        };
+      });
+      
+      // Add order items
+      const itemsAdded = addOrderItems(orderItemsToAdd);
+      console.log(`Added ${itemsAdded} items to order #${orderId}`);
+      
+      // Update inventory records (deduct stock)
+      orderItems.forEach(item => {
+        const productId = parseInt(item.product_id);
+        const quantity = item.quantity;
+        
+        // Get inventory records for this product (using first warehouse for simplicity)
+        const warehouseId = 1; // Using first warehouse for demo
+        const inventory = getInventoryByWarehouse(warehouseId);
+        const inventoryRecord = inventory.find(record => record.product_id === productId);
+        
+        if (inventoryRecord) {
+          // Update inventory record with reduced quantity
+          const newQuantity = Math.max(0, inventoryRecord.quantity_in_stock - quantity);
+          updateInventoryRecord({
+            ...inventoryRecord,
+            quantity_in_stock: newQuantity
+          });
+          
+          console.log(`Updated inventory: Product ID ${productId} - New quantity: ${newQuantity}`);
+        }
+      });
+      
+      // Show success message
+      toast({
+        title: "Success",
+        description: `Order #${orderId} created successfully`
+      });
+      
+      // Reset form
+      setSelectedCustomer('');
+      setShippingAddress('');
+      setOrderItems([{ product_id: '', quantity: 1 }]);
+      
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error("Error creating order:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create order",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -198,8 +269,10 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit}>Create Order</Button>
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? 'Creating...' : 'Create Order'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

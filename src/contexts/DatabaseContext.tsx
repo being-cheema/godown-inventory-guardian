@@ -17,8 +17,13 @@ export const DatabaseProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   useEffect(() => {
     const loadDatabase = async () => {
+      console.group("Database Initialization");
+      console.info("Starting database initialization...");
+      
       try {
         await initDatabase();
+        console.info("Database initialized successfully");
+        console.info("Sample data loaded into the database");
         setIsLoading(false);
       } catch (err) {
         console.error("Failed to initialize database:", err);
@@ -26,6 +31,8 @@ export const DatabaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         setError(err as Error);
         setIsLoading(false);
       }
+      
+      console.groupEnd();
     };
 
     loadDatabase();

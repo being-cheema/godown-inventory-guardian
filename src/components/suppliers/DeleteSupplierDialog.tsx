@@ -9,6 +9,7 @@ import {
   DialogFooter
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 interface DeleteSupplierDialogProps {
   isOpen: boolean;
@@ -23,6 +24,35 @@ const DeleteSupplierDialog: React.FC<DeleteSupplierDialogProps> = ({
   onConfirm,
   supplierName
 }) => {
+  const { toast } = useToast();
+  
+  const handleConfirm = () => {
+    try {
+      // Call the onConfirm function passed from the parent
+      onConfirm();
+      
+      // Show success toast
+      toast({
+        title: "Supplier Deleted",
+        description: `${supplierName} has been successfully removed.`,
+        variant: "default"
+      });
+      
+      // Log to console for verbose output
+      console.log(`Supplier "${supplierName}" has been deleted from the database.`);
+      
+      // Close the dialog
+      onClose();
+    } catch (error) {
+      console.error("Error deleting supplier:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete supplier. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
@@ -36,7 +66,7 @@ const DeleteSupplierDialog: React.FC<DeleteSupplierDialogProps> = ({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={onConfirm}>
+          <Button variant="destructive" onClick={handleConfirm}>
             Delete
           </Button>
         </DialogFooter>
