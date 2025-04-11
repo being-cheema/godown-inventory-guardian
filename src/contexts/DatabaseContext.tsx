@@ -6,6 +6,7 @@ interface DatabaseContextType {
   isLoading: boolean;
   isError: boolean;
   error: Error | null;
+  refreshData: () => void;
 }
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
@@ -14,6 +15,12 @@ export const DatabaseProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const refreshData = () => {
+    console.log("Manually triggering data refresh...");
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   useEffect(() => {
     const loadDatabase = async () => {
@@ -52,10 +59,10 @@ export const DatabaseProvider: React.FC<{ children: ReactNode }> = ({ children }
     };
 
     loadDatabase();
-  }, []);
+  }, [refreshTrigger]);
 
   return (
-    <DatabaseContext.Provider value={{ isLoading, isError, error }}>
+    <DatabaseContext.Provider value={{ isLoading, isError, error, refreshData }}>
       {children}
     </DatabaseContext.Provider>
   );
