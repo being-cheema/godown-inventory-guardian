@@ -734,4 +734,47 @@ export const updateInventoryForOrder = (orderItems: any[]): {success: boolean, m
       let remainingQuantity = quantity;
       
       // Loop through inventory records and update each one until we've deducted all required quantity
-      for (let i = 0; i
+      for (let i = 0; i < inventoryRecords.length && remainingQuantity > 0; i++) {
+        const record = inventoryRecords[i];
+        const availableQuantity = record.quantity_in_stock;
+        
+        // If this record has enough quantity, deduct from it
+        if (availableQuantity >= remainingQuantity) {
+          const newQuantity = availableQuantity - remainingQuantity;
+          updateInventoryRecord({
+            ...record,
+            quantity_in_stock: newQuantity
+          });
+          remainingQuantity = 0;
+          console.log(`Updated inventory record #${record.record_id}: ${availableQuantity} → ${newQuantity}`);
+        } 
+        // Otherwise, take what we can from this record and continue to the next
+        else {
+          updateInventoryRecord({
+            ...record,
+            quantity_in_stock: 0
+          });
+          remainingQuantity -= availableQuantity;
+          console.log(`Depleted inventory record #${record.record_id} (${availableQuantity} units)`);
+        }
+      }
+      
+      // Check if we couldn't fulfill the entire order
+      if (remainingQuantity > 0) {
+        console.warn(`Insufficient inventory for product ID ${productId}. Short by ${remainingQuantity} units.`);
+        result = {
+          success: false,
+          message: `Insufficient inventory for some products. Order was processed but inventory is short.`
+        };
+      }
+    } else {
+      console.error(`No inventory records found for product ID ${productId}`);
+      result = {
+        success: false,
+        message: `No inventory records found for some products. Order was processed but inventory was not updated.`
+      };
+    }
+  });
+  
+  return result;
+};
