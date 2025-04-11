@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Terminal, Maximize2, Minimize2, Play, X, RotateCcw, Save, FileCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -98,7 +99,7 @@ const Console: React.FC = () => {
     ]);
     
     console.group("Inventory System Tests");
-    runInventoryTests();
+    runInventoryTests(isVerbose);
     console.groupEnd();
     
     if (!isOpen) {

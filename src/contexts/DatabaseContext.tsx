@@ -28,7 +28,18 @@ export const DatabaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         console.info("- Inventory records linked to Products, Warehouses, and Suppliers");
         console.info("- Orders linked to Customers");
         console.info("- Order Items linked to Orders and Products");
-        console.info("Sample data loaded into the database");
+        console.info("Sample data loaded into the database (20+ products, 6 suppliers, 5 warehouses)");
+        
+        // Log the actual relationships in the database
+        console.info("Database relationships:");
+        console.info("- Supplier → Products: One-to-many relationship");
+        console.info("- Supplier → Inventory Records: One-to-many relationship");
+        console.info("- Product → Inventory Records: One-to-many relationship");
+        console.info("- Warehouse → Inventory Records: One-to-many relationship");
+        console.info("- Customer → Orders: One-to-many relationship");
+        console.info("- Order → Order Items: One-to-many relationship");
+        console.info("- Product → Order Items: One-to-many relationship");
+        
         setIsLoading(false);
       } catch (err) {
         console.error("Failed to initialize database:", err);

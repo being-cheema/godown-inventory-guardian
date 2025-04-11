@@ -5,7 +5,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getCustomers, getProducts, addOrder, addOrderItems, updateInventoryRecord, getInventoryByProduct } from '@/lib/database';
+import { 
+  getCustomers, 
+  getProducts, 
+  addOrder, 
+  addOrderItems, 
+  updateInventoryForOrder,
+  getInventoryByProduct 
+} from '@/lib/database';
 import { useToast } from '@/hooks/use-toast';
 
 interface OrderModalProps {
@@ -26,6 +33,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
   useEffect(() => {
     if (isOpen) {
       try {
+        console.log("Loading data for order form...");
         const fetchedCustomers = getCustomers();
         const fetchedProducts = getProducts();
         setCustomers(fetchedCustomers);
@@ -37,7 +45,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
           setShippingAddress(fetchedCustomers[0].shipping_address || '');
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching data for order form:", error);
         toast({
           title: "Error",
           description: "Failed to load customers or products",
@@ -81,6 +89,32 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
     }, 0);
   };
 
+  // Check if we have enough inventory for all items
+  const checkInventoryAvailability = () => {
+    for (const item of orderItems) {
+      if (!item.product_id) continue;
+      
+      const productId = parseInt(item.product_id);
+      const quantity = parseInt(item.quantity);
+      
+      // Get all inventory records for this product
+      const inventoryRecords = getInventoryByProduct(productId);
+      
+      // Calculate total available inventory across all warehouses
+      const totalAvailable = inventoryRecords.reduce((sum, record) => sum + record.quantity_in_stock, 0);
+      
+      if (totalAvailable < quantity) {
+        const product = products.find(p => p.product_id.toString() === item.product_id.toString());
+        return {
+          success: false,
+          message: `Insufficient inventory for ${product?.product_name || 'Product #' + productId}. Only ${totalAvailable} available.`
+        };
+      }
+    }
+    
+    return { success: true, message: '' };
+  };
+
   const handleSubmit = () => {
     // Validate
     if (!selectedCustomer) {
@@ -96,6 +130,17 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
       toast({
         title: "Error",
         description: "Please add at least one valid product",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Check inventory availability
+    const inventoryCheck = checkInventoryAvailability();
+    if (!inventoryCheck.success) {
+      toast({
+        title: "Inventory Error",
+        description: inventoryCheck.message,
         variant: "destructive"
       });
       return;
@@ -136,45 +181,21 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
       console.log(`Added ${itemsAdded} items to order #${orderId}`);
       
       // Update inventory records (deduct stock)
-      orderItems.forEach(item => {
-        const productId = parseInt(item.product_id);
-        const quantity = parseInt(item.quantity);
-        
-        // Get all inventory records for this product
-        const inventoryRecords = getInventoryByProduct(productId);
-        
-        if (inventoryRecords.length > 0) {
-          let remainingQuantity = quantity;
-          
-          // Loop through inventory records and update each one until we've deducted all required quantity
-          for (let i = 0; i < inventoryRecords.length && remainingQuantity > 0; i++) {
-            const record = inventoryRecords[i];
-            const quantityToDeduct = Math.min(remainingQuantity, record.quantity_in_stock);
-            
-            if (quantityToDeduct > 0) {
-              // Update inventory record
-              updateInventoryRecord({
-                ...record,
-                quantity_in_stock: record.quantity_in_stock - quantityToDeduct
-              });
-              
-              console.log(`Updated inventory: Product ID ${productId}, Warehouse ID ${record.warehouse_id} - Deducted ${quantityToDeduct} units`);
-              remainingQuantity -= quantityToDeduct;
-            }
-          }
-          
-          if (remainingQuantity > 0) {
-            console.warn(`Warning: Insufficient inventory for Product ID ${productId}. Order created but ${remainingQuantity} units not deducted from inventory.`);
-          }
-        } else {
-          console.warn(`Warning: No inventory records found for Product ID ${productId}`);
-        }
-      });
+      const inventoryResult = updateInventoryForOrder(orderItems);
+      
+      let toastVariant: "default" | "destructive" = "default";
+      let toastDescription = `Order #${orderId} created successfully`;
+      
+      if (!inventoryResult.success) {
+        toastVariant = "destructive";
+        toastDescription = inventoryResult.message;
+      }
       
       // Show success message
       toast({
-        title: "Success",
-        description: `Order #${orderId} created successfully`
+        title: "Order Created",
+        description: toastDescription,
+        variant: toastVariant
       });
       
       // Reset form
@@ -249,6 +270,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
                       {products.map(product => (
                         <SelectItem key={product.product_id} value={product.product_id.toString()}>
                           {product.product_name} (${product.price.toFixed(2)})
+                          {product.total_stock < 10 && ' - Low Stock!'}
                         </SelectItem>
                       ))}
                     </SelectContent>

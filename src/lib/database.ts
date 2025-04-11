@@ -1,4 +1,3 @@
-
 import initSqlJs, { Database } from 'sql.js';
 
 // Database singleton instance
@@ -143,7 +142,10 @@ const insertSampleData = () => {
     VALUES 
       ('Fresh Foods Inc', 'John', 'Doe', '555-123-4567', 'john@freshfoods.com', '123 Main St', 'Boston', 'MA', 'USA'),
       ('Organic Farms', 'Jane', 'Smith', '555-765-4321', 'jane@organicfarms.com', '456 Oak Ave', 'Portland', 'OR', 'USA'),
-      ('Global Grains', 'Tom', 'Wilson', '555-987-6543', 'tom@globalgrains.com', '789 Pine Rd', 'Chicago', 'IL', 'USA')
+      ('Global Grains', 'Tom', 'Wilson', '555-987-6543', 'tom@globalgrains.com', '789 Pine Rd', 'Chicago', 'IL', 'USA'),
+      ('Quality Meats', 'Michael', 'Brown', '555-111-2233', 'michael@qualitymeats.com', '101 Butcher St', 'New York', 'NY', 'USA'),
+      ('Dairy Dream', 'Sarah', 'Johnson', '555-444-5566', 'sarah@dairydream.com', '202 Milk Ave', 'Madison', 'WI', 'USA'),
+      ('Seafood Supreme', 'David', 'Lee', '555-777-8899', 'david@seafoodsupreme.com', '303 Ocean Blvd', 'Seattle', 'WA', 'USA')
   `);
   
   // Sample warehouses
@@ -152,10 +154,12 @@ const insertSampleData = () => {
     VALUES 
       ('Central Warehouse', 'Downtown', '555-111-2222'),
       ('North Facility', 'North District', '555-333-4444'),
-      ('South Storage', 'South District', '555-555-6666')
+      ('South Storage', 'South District', '555-555-6666'),
+      ('East Distribution Center', 'East Side', '555-777-8888'),
+      ('West Logistics Hub', 'West Side', '555-999-0000')
   `);
   
-  // Sample products
+  // Sample products - expanded to 20+ products
   db.run(`
     INSERT INTO products (product_name, description, price, category, supplier_id)
     VALUES 
@@ -164,10 +168,28 @@ const insertSampleData = () => {
       ('Tomatoes', 'Fresh organic tomatoes', 3.99, 'Vegetables', 2),
       ('Apples', 'Red delicious apples', 4.99, 'Fruits', 2),
       ('Chicken', 'Free-range chicken', 8.99, 'Meat', 1),
-      ('Milk', 'Organic whole milk', 3.49, 'Dairy', 1)
+      ('Milk', 'Organic whole milk', 3.49, 'Dairy', 1),
+      ('Beef Steak', 'Prime cut beef steak', 15.99, 'Meat', 4),
+      ('Salmon', 'Wild caught salmon', 12.99, 'Seafood', 6),
+      ('Yogurt', 'Greek yogurt', 4.49, 'Dairy', 5),
+      ('Cheese', 'Aged cheddar cheese', 6.99, 'Dairy', 5),
+      ('Potatoes', 'Russet potatoes', 2.99, 'Vegetables', 2),
+      ('Onions', 'Yellow onions', 1.99, 'Vegetables', 2),
+      ('Oranges', 'Navel oranges', 3.99, 'Fruits', 2),
+      ('Bananas', 'Organic bananas', 1.99, 'Fruits', 2),
+      ('Pasta', 'Italian spaghetti', 2.49, 'Grains', 3),
+      ('Bread', 'Whole wheat bread', 3.99, 'Bakery', 3),
+      ('Butter', 'Unsalted butter', 4.99, 'Dairy', 5),
+      ('Eggs', 'Free-range eggs', 5.49, 'Dairy', 1),
+      ('Pork Chops', 'Boneless pork chops', 9.99, 'Meat', 4),
+      ('Shrimp', 'Jumbo shrimp', 14.99, 'Seafood', 6),
+      ('Tuna', 'Yellowfin tuna steaks', 16.99, 'Seafood', 6),
+      ('Ground Beef', 'Lean ground beef', 7.99, 'Meat', 4),
+      ('Sugar', 'Granulated sugar', 3.49, 'Baking', 3),
+      ('Salt', 'Sea salt', 2.29, 'Spices', 3)
   `);
   
-  // Sample inventory records
+  // Sample inventory records - matching products
   db.run(`
     INSERT INTO inventory_records (product_id, warehouse_id, quantity_in_stock, expiry_date, supplier_id)
     VALUES 
@@ -176,7 +198,25 @@ const insertSampleData = () => {
       (3, 2, 150, '2024-04-30', 2),
       (4, 2, 200, '2024-05-20', 2),
       (5, 3, 100, '2024-04-25', 1),
-      (6, 3, 250, '2024-04-18', 1)
+      (6, 3, 250, '2024-04-18', 1),
+      (7, 3, 80, '2024-05-10', 4),
+      (8, 4, 120, '2024-04-15', 6),
+      (9, 4, 200, '2024-06-30', 5),
+      (10, 5, 150, '2024-07-15', 5),
+      (11, 2, 400, '2024-08-20', 2),
+      (12, 2, 350, '2024-08-10', 2),
+      (13, 2, 180, '2024-06-15', 2),
+      (14, 2, 250, '2024-05-05', 2),
+      (15, 1, 200, '2024-11-20', 3),
+      (16, 1, 150, '2024-04-25', 3),
+      (17, 4, 100, '2024-05-30', 5),
+      (18, 3, 300, '2024-05-15', 1),
+      (19, 3, 90, '2024-05-20', 4),
+      (20, 4, 70, '2024-04-20', 6),
+      (21, 4, 60, '2024-04-30', 6),
+      (22, 3, 120, '2024-05-25', 4),
+      (23, 1, 250, '2024-12-31', 3),
+      (24, 1, 300, '2024-12-31', 3)
   `);
   
   // Sample customers
@@ -225,6 +265,7 @@ export const executeQuery = (sql: string, params: any[] = []): any[] => {
 
 // Get all products
 export const getProducts = (): any[] => {
+  console.log("Fetching all products with supplier information and total stock...");
   const result = executeQuery(`
     SELECT p.*, s.supplier_name, 
     (SELECT SUM(quantity_in_stock) FROM inventory_records WHERE product_id = p.product_id) as total_stock
@@ -233,7 +274,8 @@ export const getProducts = (): any[] => {
   `);
   
   if (result.length === 0) return [];
-  return result[0].values.map((row: any[]) => ({
+  
+  const products = result[0].values.map((row: any[]) => ({
     product_id: row[0],
     product_name: row[1],
     description: row[2],
@@ -243,6 +285,9 @@ export const getProducts = (): any[] => {
     supplier_name: row[6],
     total_stock: row[7] || 0
   }));
+  
+  console.log(`Retrieved ${products.length} products from database`);
+  return products;
 };
 
 // Get low stock products
@@ -489,8 +534,21 @@ export const updateSupplier = (supplier: any): number => {
   return db?.getRowsModified() || 0;
 };
 
-// Delete supplier
+// Delete supplier with proper cascading
 export const deleteSupplier = (supplier_id: number): number => {
+  console.log(`Deleting supplier ID ${supplier_id} with proper cascading...`);
+  
+  // Get all products by this supplier first
+  const productsResult = executeQuery(`
+    SELECT product_id FROM products WHERE supplier_id = ?
+  `, [supplier_id]);
+  
+  let productIds: number[] = [];
+  if (productsResult.length > 0 && productsResult[0].values) {
+    productIds = productsResult[0].values.map((row: any[]) => row[0]);
+    console.log(`Found ${productIds.length} products linked to supplier ${supplier_id}`);
+  }
+  
   // First, update any products to remove the supplier reference
   executeQuery(`
     UPDATE products
@@ -658,3 +716,22 @@ export const getOrderDetails = (order_id: number): any => {
   
   return { ...order, items };
 };
+
+// Properly update inventory when placing an order
+export const updateInventoryForOrder = (orderItems: any[]): {success: boolean, message: string} => {
+  console.log(`Updating inventory for ${orderItems.length} order items...`);
+  
+  let result = {success: true, message: "Inventory updated successfully"};
+  
+  orderItems.forEach(item => {
+    const productId = parseInt(item.product_id);
+    const quantity = parseInt(item.quantity);
+    
+    // Get all inventory records for this product
+    const inventoryRecords = getInventoryByProduct(productId);
+    
+    if (inventoryRecords.length > 0) {
+      let remainingQuantity = quantity;
+      
+      // Loop through inventory records and update each one until we've deducted all required quantity
+      for (let i = 0; i
