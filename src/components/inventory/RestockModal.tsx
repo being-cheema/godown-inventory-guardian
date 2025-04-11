@@ -13,6 +13,7 @@ import {
 } from '@/lib/database';
 import { useToast } from '@/hooks/use-toast';
 import { Product, Supplier, Warehouse } from '@/types';
+import { useDatabase } from '@/contexts/DatabaseContext';
 
 interface RestockModalProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ const RestockModal: React.FC<RestockModalProps> = ({ isOpen, onClose, onSuccess,
   const [currentStock, setCurrentStock] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { lastRefresh } = useDatabase();
 
   // Set default expiry date to 1 year from now
   useEffect(() => {
@@ -88,7 +90,7 @@ const RestockModal: React.FC<RestockModalProps> = ({ isOpen, onClose, onSuccess,
         });
       }
     }
-  }, [isOpen, productId]);
+  }, [isOpen, productId, lastRefresh]);
 
   const updateCurrentStock = (productId: number) => {
     if (!productId) return;

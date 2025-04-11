@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -14,6 +13,7 @@ import {
   getInventoryByProduct 
 } from '@/lib/database';
 import { useToast } from '@/hooks/use-toast';
+import { useDatabase } from '@/contexts/DatabaseContext';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -29,6 +29,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
   const [shippingAddress, setShippingAddress] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { refreshData, lastRefresh } = useDatabase();
 
   useEffect(() => {
     if (isOpen) {
@@ -53,7 +54,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
         });
       }
     }
-  }, [isOpen]);
+  }, [isOpen, lastRefresh]);
 
   const handleCustomerChange = (customerId: string) => {
     setSelectedCustomer(customerId);
@@ -89,7 +90,6 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
     }, 0);
   };
 
-  // Check if we have enough inventory for all items
   const checkInventoryAvailability = () => {
     for (const item of orderItems) {
       if (!item.product_id) continue;
@@ -97,10 +97,8 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
       const productId = parseInt(item.product_id);
       const quantity = parseInt(item.quantity);
       
-      // Get all inventory records for this product
       const inventoryRecords = getInventoryByProduct(productId);
       
-      // Calculate total available inventory across all warehouses
       const totalAvailable = inventoryRecords.reduce((sum, record) => sum + record.quantity_in_stock, 0);
       
       if (totalAvailable < quantity) {
@@ -116,7 +114,6 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
   };
 
   const handleSubmit = () => {
-    // Validate
     if (!selectedCustomer) {
       toast({
         title: "Error",
@@ -135,7 +132,6 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
       return;
     }
     
-    // Check inventory availability
     const inventoryCheck = checkInventoryAvailability();
     if (!inventoryCheck.success) {
       toast({
@@ -151,10 +147,8 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
     try {
       console.log("Creating new order in database...");
       
-      // Calculate total amount
       const totalAmount = calculateTotal();
       
-      // Create order record
       const orderId = addOrder({
         customer_id: parseInt(selectedCustomer),
         total_amount: totalAmount,
@@ -164,7 +158,6 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
       
       console.log(`Order created with ID: ${orderId}`);
       
-      // Prepare order items
       const orderItemsToAdd = orderItems.map(item => {
         const product = products.find(p => p.product_id.toString() === item.product_id.toString());
         return {
@@ -176,11 +169,9 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
         };
       });
       
-      // Add order items
       const itemsAdded = addOrderItems(orderItemsToAdd);
       console.log(`Added ${itemsAdded} items to order #${orderId}`);
       
-      // Update inventory records (deduct stock)
       const inventoryResult = updateInventoryForOrder(orderItems);
       
       let toastVariant: "default" | "destructive" = "default";
@@ -191,14 +182,14 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
         toastDescription = inventoryResult.message;
       }
       
-      // Show success message
       toast({
         title: "Order Created",
         description: toastDescription,
         variant: toastVariant
       });
       
-      // Reset form
+      refreshData();
+      
       setSelectedCustomer('');
       setShippingAddress('');
       setOrderItems([{ product_id: '', quantity: 1 }]);

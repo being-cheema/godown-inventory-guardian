@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { getWarehouses, getInventoryByWarehouse } from '@/lib/database';
 import { 
@@ -42,12 +41,12 @@ const Inventory = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRestockModalOpen, setIsRestockModalOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | undefined>(undefined);
-  const { refreshData } = useDatabase();
+  const { refreshData, lastRefresh } = useDatabase();
   const { toast } = useToast();
   
   useEffect(() => {
     loadWarehouses();
-  }, []);
+  }, [lastRefresh]);
   
   const loadWarehouses = () => {
     try {
@@ -97,7 +96,6 @@ const Inventory = () => {
   
   const handleRefresh = () => {
     console.log("Refreshing inventory data...");
-    loadInventory(parseInt(selectedWarehouse));
     refreshData();
     toast({
       title: "Refreshed",
@@ -129,14 +127,12 @@ const Inventory = () => {
     return quantity < 100;
   };
   
-  // Format date to readable format
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleDateString();
   };
   
-  // Group inventory by category
   const groupByCategory = () => {
     const grouped: Record<string, any[]> = {};
     inventory.forEach(item => {
@@ -147,7 +143,6 @@ const Inventory = () => {
     return grouped;
   };
   
-  // Get a color for each category (for visual distinction)
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
       'Dairy': 'bg-blue-100 text-blue-800',
@@ -322,7 +317,6 @@ const Inventory = () => {
         </TabsContent>
       </Tabs>
       
-      {/* Restock Modal */}
       <RestockModal
         isOpen={isRestockModalOpen}
         onClose={() => setIsRestockModalOpen(false)}

@@ -7,6 +7,7 @@ interface DatabaseContextType {
   isError: boolean;
   error: Error | null;
   refreshData: () => void;
+  lastRefresh: number; // Adding timestamp to track when data was last refreshed
 }
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
@@ -16,10 +17,12 @@ export const DatabaseProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [lastRefresh, setLastRefresh] = useState(Date.now());
 
   const refreshData = () => {
     console.log("Manually triggering data refresh...");
     setRefreshTrigger(prev => prev + 1);
+    setLastRefresh(Date.now());
   };
 
   useEffect(() => {
@@ -48,6 +51,7 @@ export const DatabaseProvider: React.FC<{ children: ReactNode }> = ({ children }
         console.info("- Product → Order Items: One-to-many relationship");
         
         setIsLoading(false);
+        setLastRefresh(Date.now());
       } catch (err) {
         console.error("Failed to initialize database:", err);
         setIsError(true);
@@ -62,7 +66,7 @@ export const DatabaseProvider: React.FC<{ children: ReactNode }> = ({ children }
   }, [refreshTrigger]);
 
   return (
-    <DatabaseContext.Provider value={{ isLoading, isError, error, refreshData }}>
+    <DatabaseContext.Provider value={{ isLoading, isError, error, refreshData, lastRefresh }}>
       {children}
     </DatabaseContext.Provider>
   );
