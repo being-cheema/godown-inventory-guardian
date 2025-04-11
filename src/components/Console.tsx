@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Terminal, Maximize2, Minimize2, Play, X, RotateCcw, Save, FileCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,7 +15,6 @@ const Console: React.FC = () => {
   const consoleRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
-  // Override console.log to capture logs
   useEffect(() => {
     const originalConsoleLog = console.log;
     const originalConsoleError = console.error;
@@ -87,7 +85,6 @@ const Console: React.FC = () => {
     };
   }, []);
   
-  // Scroll to bottom when logs update
   useEffect(() => {
     if (consoleRef.current && isAutoScroll) {
       consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
@@ -101,7 +98,7 @@ const Console: React.FC = () => {
     ]);
     
     console.group("Inventory System Tests");
-    runInventoryTests(isVerbose);
+    runInventoryTests();
     console.groupEnd();
     
     if (!isOpen) {
@@ -237,7 +234,6 @@ const Console: React.FC = () => {
               </div>
             ) : (
               logs.map((log, index) => {
-                // Highlight different message types
                 let className = "mb-1 whitespace-pre-wrap break-words";
                 
                 if (log.includes('[error]')) {
@@ -250,10 +246,8 @@ const Console: React.FC = () => {
                   className += " text-purple-400 font-bold";
                 }
                 
-                // Handle JSON strings to display them properly
                 if (log.includes('{') || log.includes('[')) {
                   try {
-                    // Extract JSON part of the log (if any)
                     const jsonMatch = log.match(/(\{.*\}|\[.*\])/);
                     if (jsonMatch) {
                       const jsonPart = jsonMatch[0];
@@ -271,11 +265,9 @@ const Console: React.FC = () => {
                       );
                     }
                   } catch {
-                    // If it's not valid JSON, display as normal
                   }
                 }
                 
-                // Display regular logs
                 return <div key={index} className={className}>{log}</div>;
               })
             )}

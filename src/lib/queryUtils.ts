@@ -1,4 +1,3 @@
-
 import {
   executeQuery,
   getProducts,
@@ -198,7 +197,7 @@ export const getSuppliersProductCount = (): any[] => {
 };
 
 // Run a test for all the queries and log the results to console
-export const runInventoryTests = () => {
+export const runInventoryTests = (verbose = true) => {
   console.group("📊 Inventory Management System - Test Results");
   
   // General Inventory Tests
@@ -210,21 +209,27 @@ export const runInventoryTests = () => {
   
   const lowStockProducts = getLowStockProducts(100);
   console.log(`Low Stock Products (below 100 units): ${lowStockProducts.length} products`);
-  lowStockProducts.forEach(product => {
-    console.log(`- ${product.product_name}: ${product.quantity_in_stock} units`);
-  });
+  if (verbose) {
+    lowStockProducts.forEach(product => {
+      console.log(`- ${product.product_name}: ${product.quantity_in_stock} units`);
+    });
+  }
   
   const perishableProducts = getPerishableProducts();
   console.log(`Perishable Products: ${perishableProducts.length} products`);
-  perishableProducts.forEach(product => {
-    console.log(`- ${product.product_name} (${product.total_stock} units)`);
-  });
+  if (verbose) {
+    perishableProducts.forEach(product => {
+      console.log(`- ${product.product_name} (${product.total_stock} units)`);
+    });
+  }
   
   const expiringProducts = getExpiringProducts(30);
   console.log(`Products Expiring in 30 Days: ${expiringProducts.length} products`);
-  expiringProducts.forEach(product => {
-    console.log(`- ${product.product_name}: Expires on ${product.expiry_date}`);
-  });
+  if (verbose) {
+    expiringProducts.forEach(product => {
+      console.log(`- ${product.product_name}: Expires on ${product.expiry_date}`);
+    });
+  }
   
   const recentlyUpdated = getRecentlyUpdatedProducts(24);
   console.log(`Products Updated in Last 24 Hours: ${recentlyUpdated.length} products`);
@@ -236,7 +241,9 @@ export const runInventoryTests = () => {
   if (products.length > 0) {
     const sampleProduct = getProductDetails(products[0].product_id);
     console.log(`Sample Product Details:`);
-    console.log(sampleProduct);
+    if (verbose) {
+      console.log(sampleProduct);
+    }
     console.log(`Stock of ${sampleProduct.product_name}: ${getProductStock(sampleProduct.product_id)} units`);
   }
   console.groupEnd();
@@ -248,20 +255,26 @@ export const runInventoryTests = () => {
   
   const supplierProductCounts = getSuppliersProductCount();
   console.log(`Supplier Product Counts:`);
-  supplierProductCounts.forEach(supplier => {
-    console.log(`- ${supplier.supplier_name}: ${supplier.product_count} products`);
-  });
+  if (verbose) {
+    supplierProductCounts.forEach(supplier => {
+      console.log(`- ${supplier.supplier_name}: ${supplier.product_count} products`);
+    });
+  }
   
   if (suppliers.length > 0) {
     const sampleSupplier = getSupplierDetails(suppliers[0].supplier_id);
     console.log(`Sample Supplier Details:`);
-    console.log(sampleSupplier);
+    if (verbose) {
+      console.log(sampleSupplier);
+    }
     
     const supplierProducts = getSupplierProducts(sampleSupplier.supplier_id);
     console.log(`Products from ${sampleSupplier.supplier_name}: ${supplierProducts.length} products`);
-    supplierProducts.forEach(product => {
-      console.log(`- ${product.product_name} (${product.total_stock} units)`);
-    });
+    if (verbose) {
+      supplierProducts.forEach(product => {
+        console.log(`- ${product.product_name} (${product.total_stock} units)`);
+      });
+    }
   }
   console.groupEnd();
   
@@ -269,7 +282,7 @@ export const runInventoryTests = () => {
   console.group("📦 Order Information Tests");
   const recentOrders = getRecentOrders(10);
   console.log(`Recent Orders: ${recentOrders.length}`);
-  if (recentOrders.length > 0) {
+  if (verbose && recentOrders.length > 0) {
     console.log(`Sample Order Details:`);
     console.log(recentOrders[0]);
   }
