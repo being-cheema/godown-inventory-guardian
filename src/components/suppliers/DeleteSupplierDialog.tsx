@@ -10,11 +10,13 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { deleteSupplier } from '@/lib/database';
 
 interface DeleteSupplierDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  supplierId: number;
   supplierName: string;
 }
 
@@ -22,14 +24,20 @@ const DeleteSupplierDialog: React.FC<DeleteSupplierDialogProps> = ({
   isOpen,
   onClose,
   onConfirm,
+  supplierId,
   supplierName
 }) => {
   const { toast } = useToast();
   
   const handleConfirm = () => {
     try {
-      // Call the onConfirm function passed from the parent
-      onConfirm();
+      // Call the database function to delete the supplier
+      if (supplierId) {
+        console.log(`Deleting supplier "${supplierName}" (ID: ${supplierId}) from database...`);
+        const result = deleteSupplier(supplierId);
+        console.log(`Deleted supplier "${supplierName}" (affected ${result} rows)`);
+        console.log(`Note: References to this supplier in products and inventory have been set to NULL`);
+      }
       
       // Show success toast
       toast({
@@ -38,8 +46,8 @@ const DeleteSupplierDialog: React.FC<DeleteSupplierDialogProps> = ({
         variant: "default"
       });
       
-      // Log to console for verbose output
-      console.log(`Supplier "${supplierName}" has been deleted from the database.`);
+      // Call the onConfirm function passed from the parent
+      onConfirm();
       
       // Close the dialog
       onClose();
@@ -60,6 +68,7 @@ const DeleteSupplierDialog: React.FC<DeleteSupplierDialogProps> = ({
           <DialogTitle>Delete Supplier</DialogTitle>
           <DialogDescription>
             Are you sure you want to delete "{supplierName}"? This action cannot be undone.
+            All references to this supplier in products and inventory will be removed.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

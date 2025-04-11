@@ -1,3 +1,4 @@
+
 import initSqlJs, { Database } from 'sql.js';
 
 // Database singleton instance
@@ -349,9 +350,10 @@ export const updateInventoryRecord = (record: any): number => {
 // Get inventory by warehouse
 export const getInventoryByWarehouse = (warehouse_id: number): any[] => {
   const result = executeQuery(`
-    SELECT ir.*, p.product_name, p.category, p.price
+    SELECT ir.*, p.product_name, p.category, p.price, s.supplier_name
     FROM inventory_records ir
     JOIN products p ON ir.product_id = p.product_id
+    LEFT JOIN suppliers s ON ir.supplier_id = s.supplier_id
     WHERE ir.warehouse_id = ?
   `, [warehouse_id]);
   
@@ -366,7 +368,63 @@ export const getInventoryByWarehouse = (warehouse_id: number): any[] => {
     supplier_id: row[6],
     product_name: row[7],
     category: row[8],
-    price: row[9]
+    price: row[9],
+    supplier_name: row[10]
+  }));
+};
+
+// Get inventory by product
+export const getInventoryByProduct = (product_id: number): any[] => {
+  const result = executeQuery(`
+    SELECT ir.*, p.product_name, p.category, p.price, s.supplier_name, w.warehouse_name 
+    FROM inventory_records ir
+    JOIN products p ON ir.product_id = p.product_id
+    JOIN warehouses w ON ir.warehouse_id = w.warehouse_id
+    LEFT JOIN suppliers s ON ir.supplier_id = s.supplier_id
+    WHERE ir.product_id = ?
+    ORDER BY ir.quantity_in_stock DESC
+  `, [product_id]);
+  
+  if (result.length === 0) return [];
+  return result[0].values.map((row: any[]) => ({
+    record_id: row[0],
+    product_id: row[1],
+    warehouse_id: row[2],
+    quantity_in_stock: row[3],
+    last_updated: row[4],
+    expiry_date: row[5],
+    supplier_id: row[6],
+    product_name: row[7],
+    category: row[8],
+    price: row[9],
+    supplier_name: row[10],
+    warehouse_name: row[11]
+  }));
+};
+
+// Get inventory by supplier
+export const getInventoryBySupplier = (supplier_id: number): any[] => {
+  const result = executeQuery(`
+    SELECT ir.*, p.product_name, p.category, p.price, w.warehouse_name 
+    FROM inventory_records ir
+    JOIN products p ON ir.product_id = p.product_id
+    JOIN warehouses w ON ir.warehouse_id = w.warehouse_id
+    WHERE ir.supplier_id = ? OR p.supplier_id = ?
+  `, [supplier_id, supplier_id]);
+  
+  if (result.length === 0) return [];
+  return result[0].values.map((row: any[]) => ({
+    record_id: row[0],
+    product_id: row[1],
+    warehouse_id: row[2],
+    quantity_in_stock: row[3],
+    last_updated: row[4],
+    expiry_date: row[5],
+    supplier_id: row[6],
+    product_name: row[7],
+    category: row[8],
+    price: row[9],
+    warehouse_name: row[10]
   }));
 };
 
@@ -401,6 +459,59 @@ export const getSuppliers = (): any[] => {
     locality: row[9],
     country: row[10]
   }));
+};
+
+// Add supplier
+export const addSupplier = (supplier: any): number => {
+  const { supplier_name, first_name, last_name, contact_phone, email, address, city, state, locality, country } = supplier;
+  
+  const result = executeQuery(`
+    INSERT INTO suppliers (supplier_name, first_name, last_name, contact_phone, email, address, city, state, locality, country)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [supplier_name, first_name, last_name, contact_phone, email, address, city, state, locality, country]);
+  
+  // Get the last inserted ID
+  const idResult = executeQuery(`SELECT last_insert_rowid()`);
+  if (idResult.length === 0 || !idResult[0].values || !idResult[0].values[0]) return 0;
+  return idResult[0].values[0][0];
+};
+
+// Update supplier
+export const updateSupplier = (supplier: any): number => {
+  const { supplier_id, supplier_name, first_name, last_name, contact_phone, email, address, city, state, locality, country } = supplier;
+  
+  const result = executeQuery(`
+    UPDATE suppliers
+    SET supplier_name = ?, first_name = ?, last_name = ?, contact_phone = ?, email = ?, address = ?, city = ?, state = ?, locality = ?, country = ?
+    WHERE supplier_id = ?
+  `, [supplier_name, first_name, last_name, contact_phone, email, address, city, state, locality, country, supplier_id]);
+  
+  return db?.getRowsModified() || 0;
+};
+
+// Delete supplier
+export const deleteSupplier = (supplier_id: number): number => {
+  // First, update any products to remove the supplier reference
+  executeQuery(`
+    UPDATE products
+    SET supplier_id = NULL
+    WHERE supplier_id = ?
+  `, [supplier_id]);
+  
+  // Next, update inventory records to remove the supplier reference
+  executeQuery(`
+    UPDATE inventory_records
+    SET supplier_id = NULL
+    WHERE supplier_id = ?
+  `, [supplier_id]);
+  
+  // Finally, delete the supplier
+  const result = executeQuery(`
+    DELETE FROM suppliers
+    WHERE supplier_id = ?
+  `, [supplier_id]);
+  
+  return db?.getRowsModified() || 0;
 };
 
 // Get recent orders

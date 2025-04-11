@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getCustomers, getProducts, addOrder, addOrderItems, updateInventoryRecord, getInventoryByWarehouse } from '@/lib/database';
+import { getCustomers, getProducts, addOrder, addOrderItems, updateInventoryRecord, getInventoryByProduct } from '@/lib/database';
 import { useToast } from '@/hooks/use-toast';
 
 interface OrderModalProps {
@@ -138,22 +138,36 @@ const OrderModal: React.FC<OrderModalProps> = ({ isOpen, onClose, onSuccess }) =
       // Update inventory records (deduct stock)
       orderItems.forEach(item => {
         const productId = parseInt(item.product_id);
-        const quantity = item.quantity;
+        const quantity = parseInt(item.quantity);
         
-        // Get inventory records for this product (using first warehouse for simplicity)
-        const warehouseId = 1; // Using first warehouse for demo
-        const inventory = getInventoryByWarehouse(warehouseId);
-        const inventoryRecord = inventory.find(record => record.product_id === productId);
+        // Get all inventory records for this product
+        const inventoryRecords = getInventoryByProduct(productId);
         
-        if (inventoryRecord) {
-          // Update inventory record with reduced quantity
-          const newQuantity = Math.max(0, inventoryRecord.quantity_in_stock - quantity);
-          updateInventoryRecord({
-            ...inventoryRecord,
-            quantity_in_stock: newQuantity
-          });
+        if (inventoryRecords.length > 0) {
+          let remainingQuantity = quantity;
           
-          console.log(`Updated inventory: Product ID ${productId} - New quantity: ${newQuantity}`);
+          // Loop through inventory records and update each one until we've deducted all required quantity
+          for (let i = 0; i < inventoryRecords.length && remainingQuantity > 0; i++) {
+            const record = inventoryRecords[i];
+            const quantityToDeduct = Math.min(remainingQuantity, record.quantity_in_stock);
+            
+            if (quantityToDeduct > 0) {
+              // Update inventory record
+              updateInventoryRecord({
+                ...record,
+                quantity_in_stock: record.quantity_in_stock - quantityToDeduct
+              });
+              
+              console.log(`Updated inventory: Product ID ${productId}, Warehouse ID ${record.warehouse_id} - Deducted ${quantityToDeduct} units`);
+              remainingQuantity -= quantityToDeduct;
+            }
+          }
+          
+          if (remainingQuantity > 0) {
+            console.warn(`Warning: Insufficient inventory for Product ID ${productId}. Order created but ${remainingQuantity} units not deducted from inventory.`);
+          }
+        } else {
+          console.warn(`Warning: No inventory records found for Product ID ${productId}`);
         }
       });
       

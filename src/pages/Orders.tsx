@@ -84,7 +84,7 @@ const Orders: React.FC = () => {
   const handleRunTests = () => {
     console.clear(); // Clear console before running tests
     console.log("=== Starting Inventory System Tests ===");
-    runInventoryTests(isVerboseOutput);
+    runInventoryTests();
     
     toast({
       title: "Tests Running",

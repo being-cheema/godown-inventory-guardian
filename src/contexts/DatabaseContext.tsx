@@ -23,6 +23,11 @@ export const DatabaseProvider: React.FC<{ children: ReactNode }> = ({ children }
       try {
         await initDatabase();
         console.info("Database initialized successfully");
+        console.info("Database schema created with proper relationships:");
+        console.info("- Products linked to Suppliers (supplier_id foreign key)");
+        console.info("- Inventory records linked to Products, Warehouses, and Suppliers");
+        console.info("- Orders linked to Customers");
+        console.info("- Order Items linked to Orders and Products");
         console.info("Sample data loaded into the database");
         setIsLoading(false);
       } catch (err) {

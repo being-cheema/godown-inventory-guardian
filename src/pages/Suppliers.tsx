@@ -36,6 +36,7 @@ const Suppliers: React.FC = () => {
     try {
       const fetchedSuppliers = getSuppliers();
       setSuppliers(fetchedSuppliers);
+      console.log(`Loaded ${fetchedSuppliers.length} suppliers from database`);
     } catch (error) {
       console.error("Error fetching suppliers:", error);
       toast({
@@ -81,12 +82,8 @@ const Suppliers: React.FC = () => {
   
   const handleDeleteConfirm = () => {
     if (selectedSupplier) {
-      // In a real app, this would delete from the database
       setSuppliers(suppliers.filter(s => s.supplier_id !== selectedSupplier.supplier_id));
-      toast({
-        title: "Success",
-        description: "Supplier deleted successfully"
-      });
+      fetchSuppliers(); // Refresh the list from the database
     }
     setIsDeleteDialogOpen(false);
   };
@@ -236,6 +233,7 @@ const Suppliers: React.FC = () => {
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleDeleteConfirm}
+        supplierId={selectedSupplier?.supplier_id || 0}
         supplierName={selectedSupplier?.supplier_name || ''}
       />
     </div>
